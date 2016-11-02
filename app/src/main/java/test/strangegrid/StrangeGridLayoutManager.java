@@ -147,7 +147,7 @@ public class StrangeGridLayoutManager extends RecyclerView.LayoutManager {
             for (int i = 0, c = offsets.length; i < c; i++) {
                 if (offsets[i] < 0) {
                     throw new IllegalArgumentException("offsets should contain only positive values," +
-                            "found " + offsets[i] + " at index " + i);
+                            " but found " + offsets[i] + " at index " + i);
                 }
             }
         }
