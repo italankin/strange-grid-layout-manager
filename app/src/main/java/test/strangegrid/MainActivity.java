@@ -14,8 +14,8 @@ import java.util.Random;
 
 public class MainActivity extends AppCompatActivity implements ClickListener.OnItemClickListener {
 
-    private static final int[] COLUMNS = {3, 2};
-    private static final int SIZE = 100;
+    private static final int[] COLUMNS = {5, 4};
+    private static final int SIZE = 500;
     private List<Integer> dataset;
 
     @Override

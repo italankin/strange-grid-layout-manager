@@ -4,6 +4,7 @@ import android.content.Context;
 import android.graphics.PointF;
 import android.graphics.Rect;
 import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import android.support.v7.widget.LinearSmoothScroller;
 import android.support.v7.widget.RecyclerView;
 import android.util.SparseArray;
@@ -44,18 +45,27 @@ public class StrangeGridLayoutManager extends RecyclerView.LayoutManager {
      */
     private SparseIntArray indexInRow = new SparseIntArray();
     /**
-     * Temporary view cache for fill pass
+     * Temporary view cache for single fill pass
      */
     private SparseArray<View> viewsCache = new SparseArray<>();
     /**
-     * Child size (all children are squares)
+     * Child size (every child is a square)
      */
     private int childSize;
     private int childSizeSpec;
+    /**
+     * Amount of horizontal space available to child views
+     */
     private int availableWidth;
     private Rect parentRect = new Rect();
     private Rect tmpRect = new Rect();
 
+    /**
+     * Enables adaptive children sizes
+     */
+    private boolean adaptive = false;
+    private int adaptiveMinSize = 0;
+    private int[] adaptiveOffsets;
 
     public StrangeGridLayoutManager(Context context) {
         scroller = new LinearSmoothScroller(context) {
@@ -81,6 +91,9 @@ public class StrangeGridLayoutManager extends RecyclerView.LayoutManager {
      * @param values array of ints, should not contain values < 1
      */
     public void setColumnCounts(@NonNull int[] values) {
+        if (values.length == 0) {
+            throw new IllegalArgumentException("Array must contain at least one value");
+        }
         int max = 0;
         for (int i = 0, l = values.length; i < l; i++) {
             int v = values[i];
@@ -94,6 +107,7 @@ public class StrangeGridLayoutManager extends RecyclerView.LayoutManager {
         }
         maxCount = max;
         columnCounts = Arrays.copyOf(values, values.length);
+        adaptive = false;
         requestLayout();
     }
 
@@ -117,30 +131,80 @@ public class StrangeGridLayoutManager extends RecyclerView.LayoutManager {
         }
     }
 
+    /**
+     * Setups layout manager for adaptive child sizes. If specific offset value for row happen to be
+     * greater than maximum count of children withing single row, manager will assume that row will
+     * contain only one child.
+     *
+     * @param minSize minumum size of a child
+     * @param offsets offsets for column counts, must contain only zeros and positive numbers
+     */
+    public void setupForAdaptiveSize(int minSize, @Nullable int[] offsets) {
+        if (minSize <= 0) {
+            throw new IllegalArgumentException("minSize must be > 0");
+        }
+        if (offsets != null) {
+            for (int i = 0, c = offsets.length; i < c; i++) {
+                if (offsets[i] < 0) {
+                    throw new IllegalArgumentException("offsets should contain only positive values," +
+                            "found " + offsets[i] + " at index " + i);
+                }
+            }
+        }
+        adaptive = true;
+        adaptiveMinSize = minSize;
+        adaptiveOffsets = offsets;
+    }
+
     @Override
     public void onLayoutChildren(RecyclerView.Recycler recycler, RecyclerView.State state) {
-        detachAndScrapAttachedViews(recycler);
+        parentRect.set(0, 0, getWidth(), getHeight());
+        availableWidth = getWidth() - getPaddingLeft() - getPaddingRight();
+        if (adaptive) {
+            // calculate child size
+            int newCount = availableWidth / Math.min(availableWidth, adaptiveMinSize);
+            if (newCount != maxCount) {
+                maxCount = newCount;
+                if (maxCount <= 0) {
+                    throw new IllegalStateException("Cannot calculate max count for min child size: " +
+                            adaptiveMinSize);
+                }
+                if (adaptiveOffsets != null) {
+                    int c = adaptiveOffsets.length;
+                    if (c == 0) {
+                        columnCounts = new int[]{maxCount};
+                    } else {
+                        columnCounts = new int[c];
+                        for (int i = 0; i < c; i++) {
+                            // apply offsets
+                            columnCounts[i] = Math.max(1, maxCount - adaptiveOffsets[i]);
+                        }
+                    }
+                } else {
+                    columnCounts = new int[]{maxCount};
+                }
+            }
+        }
+        childSize = (availableWidth - childMarginHorizontal * (maxCount - 1)) / maxCount;
+        childSizeSpec = View.MeasureSpec.makeMeasureSpec(childSize, View.MeasureSpec.EXACTLY);
 
-        int itemCount = getItemCount();
+        // create caches to avoid unnecesary computation
         int row = 0;
-        int count = columnCounts[row % columnCounts.length];
+        int count = childCountForRow(row);
         int current = 0;
-        for (int i = 0; i < itemCount; i++) {
+        rowsByPos.clear();
+        indexInRow.clear();
+        for (int i = 0, c = getItemCount(); i < c; i++) {
             rowsByPos.put(i, row);
             indexInRow.put(i, current);
             current++;
             if (current == count) {
-                count = columnCounts[++row % columnCounts.length];
+                count = childCountForRow(++row);
                 current = 0;
             }
         }
 
-        parentRect.set(0, 0, getWidth(), getHeight());
-
-        availableWidth = getWidth() - getPaddingLeft() - getPaddingRight();
-        childSize = (availableWidth - childMarginHorizontal * (maxCount - 1)) / maxCount;
-        childSizeSpec = View.MeasureSpec.makeMeasureSpec(childSize, View.MeasureSpec.EXACTLY);
-
+        detachAndScrapAttachedViews(recycler);
         fill(recycler);
     }
 
@@ -297,7 +361,7 @@ public class StrangeGridLayoutManager extends RecyclerView.LayoutManager {
             if (tmpRect.intersect(parentRect)) {
                 // find the area of intersection
                 int area = tmpRect.width() * tmpRect.height();
-                if (area > maxArea) {
+                if (area > maxArea) { // use >= to return last found view
                     anchorView = child;
                     maxArea = area;
                 }
@@ -361,34 +425,37 @@ public class StrangeGridLayoutManager extends RecyclerView.LayoutManager {
         View topView = getChildAt(0);
         View bottomView = getChildAt(getChildCount() - 1);
 
-        int decoratedBottom = bottomView.getBottom();
-        int decoratedTop = topView.getTop();
-        int viewSpan = decoratedBottom - decoratedTop;
+        int bottom = bottomView.getBottom();
+        int top = topView.getTop();
+        int viewSpan = bottom - top;
+        // check if all views are fit into the parent
         if (viewSpan <= getHeight() - getPaddingTop() - getPaddingBottom()) {
             return 0;
         }
 
         int delta = 0;
         if (dy < 0) {
+            // scrolling towards begining of list
             int position = getPosition(topView);
             if (position > 0) {
                 delta = dy;
             } else {
-                delta = Math.max(decoratedTop - getPaddingTop(), dy);
+                delta = Math.max(top - getPaddingTop(), dy);
             }
         } else if (dy > 0) {
+            // scrolling towards end of list
             int position = getPosition(bottomView);
             if (position < getItemCount() - 1) {
                 delta = dy;
             } else {
-                delta = Math.min(decoratedBottom - getHeight() + getPaddingBottom(), dy);
+                delta = Math.min(bottom - getHeight() + getPaddingBottom(), dy);
             }
         }
 
-        // if scroll position changed, perhaps we need to fill layout
         if (delta != 0) {
             // scroll children
             offsetChildrenVertical(-delta);
+            // if scroll position changed, perhaps we need to fill layout
             fill(recycler);
         }
 
