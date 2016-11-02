@@ -1,4 +1,4 @@
-package test.stupidgrid;
+package test.strangegrid;
 
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
@@ -12,7 +12,7 @@ import android.view.animation.Interpolator;
 
 import java.util.HashMap;
 
-public class StupidAnimateTouchListener extends RecyclerView.SimpleOnItemTouchListener {
+public class AnimateTouchListener extends RecyclerView.SimpleOnItemTouchListener {
 
     private static final Interpolator INTERPOLATOR = new DecelerateInterpolator(1);
 
@@ -20,7 +20,7 @@ public class StupidAnimateTouchListener extends RecyclerView.SimpleOnItemTouchLi
     private final int elevation;
     private View current;
 
-    public StupidAnimateTouchListener(Context context) {
+    public AnimateTouchListener(Context context) {
         elevation = context.getResources().getDimensionPixelSize(R.dimen.touch_elevation);
     }
 

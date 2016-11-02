@@ -1,4 +1,4 @@
-package test.stupidgrid;
+package test.strangegrid;
 
 import android.content.Context;
 import android.support.annotation.NonNull;
@@ -7,12 +7,12 @@ import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.view.View;
 
-public class StupidClickListener extends RecyclerView.SimpleOnItemTouchListener {
+public class ClickListener extends RecyclerView.SimpleOnItemTouchListener {
 
     private final GestureDetector gestureDetector;
     private final OnItemClickListener itemClickListener;
 
-    public StupidClickListener(Context context, @NonNull OnItemClickListener listener) {
+    public ClickListener(Context context, @NonNull OnItemClickListener listener) {
         gestureDetector = new GestureDetector(context, new GestureDetector.SimpleOnGestureListener() {
             @Override
             public boolean onSingleTapUp(MotionEvent e) {
