@@ -4,6 +4,8 @@ import android.graphics.Color;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.RecyclerView;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.Toast;
 
@@ -15,9 +17,10 @@ import java.util.Random;
 public class MainActivity extends AppCompatActivity implements ClickListener.OnItemClickListener {
 
     private static final int[] COLUMNS = {3, 2};
-    private static final int SIZE = 500;
+    private static final int SIZE = 10000;
 
     private List<Integer> dataset;
+    private DataAdapter adapter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -33,7 +36,8 @@ public class MainActivity extends AppCompatActivity implements ClickListener.OnI
         list.setLayoutManager(layoutManager);
 
         dataset = generateDataset(SIZE);
-        DataAdapter adapter = new DataAdapter(this, dataset);
+        adapter = new DataAdapter(this);
+        adapter.setDataset(dataset);
         list.setAdapter(adapter);
 
         list.addOnItemTouchListener(new AnimateTouchListener(this));
@@ -50,10 +54,28 @@ public class MainActivity extends AppCompatActivity implements ClickListener.OnI
     }
 
     @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.main, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        switch (item.getItemId()) {
+            case R.id.action_refresh:
+                dataset = generateDataset(SIZE);
+                adapter.setDataset(dataset);
+                return true;
+        }
+        return false;
+    }
+
+    @Override
     public void onItemClick(RecyclerView recyclerView, View view, int position) {
         int color = dataset.get(position);
         String s = String.format(Locale.getDefault(), "#%02X%02X%02X",
                 Color.red(color), Color.green(color), Color.blue(color));
         Toast.makeText(MainActivity.this, s, Toast.LENGTH_SHORT).show();
     }
+
 }

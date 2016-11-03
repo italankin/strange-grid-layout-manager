@@ -403,6 +403,11 @@ public class StrangeGridLayoutManager extends RecyclerView.LayoutManager {
     }
 
     @Override
+    public void onAdapterChanged(RecyclerView.Adapter oldAdapter, RecyclerView.Adapter newAdapter) {
+        removeAllViews();
+    }
+
+    @Override
     public boolean canScrollVertically() {
         return true;
     }

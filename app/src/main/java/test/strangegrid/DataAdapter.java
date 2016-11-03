@@ -17,11 +17,15 @@ import java.util.List;
 public class DataAdapter extends RecyclerView.Adapter<DataAdapter.ItemViewHolder> {
 
     private final Context context;
-    private final List<Integer> dataset;
+    private List<Integer> dataset;
 
-    public DataAdapter(Context context, List<Integer> dataset) {
+    public DataAdapter(Context context) {
         this.context = context;
+    }
+
+    public void setDataset(List<Integer> dataset) {
         this.dataset = dataset == null ? Collections.<Integer>emptyList() : dataset;
+        notifyDataSetChanged();
     }
 
     @Override
