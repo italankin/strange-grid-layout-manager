@@ -4,6 +4,7 @@ import android.graphics.Color;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.RecyclerView;
+import android.util.Log;
 import android.view.View;
 import android.widget.Toast;
 
@@ -14,16 +15,18 @@ import java.util.Random;
 
 public class MainActivity extends AppCompatActivity implements ClickListener.OnItemClickListener {
 
-    private static final int[] COLUMNS = {5, 4};
+    private static final int[] COLUMNS = {3, 2};
     private static final int SIZE = 500;
+
     private List<Integer> dataset;
+    private RecyclerView list;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
         setContentView(R.layout.activity_main);
-        RecyclerView list = (RecyclerView) findViewById(R.id.list);
+        list = (RecyclerView) findViewById(R.id.list);
 
         final int margin = getResources().getDimensionPixelSize(R.dimen.child_padding);
         StrangeGridLayoutManager layoutManager = new StrangeGridLayoutManager(this);
@@ -54,5 +57,8 @@ public class MainActivity extends AppCompatActivity implements ClickListener.OnI
         String s = String.format(Locale.getDefault(), "#%02X%02X%02X",
                 Color.red(color), Color.green(color), Color.blue(color));
         Toast.makeText(MainActivity.this, s, Toast.LENGTH_SHORT).show();
+        int next = new Random().nextInt(dataset.size());
+        list.scrollToPosition(next);
+        Log.d("MainActivity", "onItemClick: " + next);
     }
 }

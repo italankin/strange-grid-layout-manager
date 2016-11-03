@@ -15,8 +15,6 @@ import java.util.Arrays;
 
 public class StrangeGridLayoutManager extends RecyclerView.LayoutManager {
 
-    private LinearSmoothScroller scroller;
-
     /**
      * Additional horizontal margin between child views
      */
@@ -67,8 +65,10 @@ public class StrangeGridLayoutManager extends RecyclerView.LayoutManager {
     private int adaptiveMinSize = 0;
     private int[] adaptiveOffsets;
 
+    private LinearSmoothScroller smoothScroller;
+
     public StrangeGridLayoutManager(Context context) {
-        scroller = new LinearSmoothScroller(context) {
+        smoothScroller = new LinearSmoothScroller(context) {
             @Override
             public PointF computeScrollVectorForPosition(int targetPosition) {
                 if (getChildCount() == 0) {
@@ -251,7 +251,7 @@ public class StrangeGridLayoutManager extends RecyclerView.LayoutManager {
             anchorPos = getPosition(anchorView);
         }
 
-        int bottomMargin = -childSize; // additional space for scrolling
+        int bottomMargin = 0;
         int bottom = anchorBottom; // current bottom position
         int currentRow = rowsByPos.get(anchorPos);
         int count = childCountForRow(currentRow);
@@ -306,7 +306,7 @@ public class StrangeGridLayoutManager extends RecyclerView.LayoutManager {
             anchorPos = getPosition(anchorView);
         }
 
-        int topMargin = getHeight() + childSize;
+        int topMargin = getHeight() - getPaddingBottom();
         int top = anchorTop; // current top position
         int currentRow = rowsByPos.get(anchorPos);
         int countForRow = childCountForRow(currentRow);
@@ -408,12 +408,17 @@ public class StrangeGridLayoutManager extends RecyclerView.LayoutManager {
     }
 
     @Override
-    public void smoothScrollToPosition(RecyclerView recyclerView, RecyclerView.State state, int position) {
+    public void scrollToPosition(int position) {
         if (position >= getItemCount()) {
             return;
         }
-        scroller.setTargetPosition(position);
-        startSmoothScroll(scroller);
+        smoothScroller.setTargetPosition(position);
+        startSmoothScroll(smoothScroller);
+    }
+
+    @Override
+    public void smoothScrollToPosition(RecyclerView recyclerView, RecyclerView.State state, int position) {
+        scrollToPosition(position);
     }
 
     @Override
@@ -429,7 +434,7 @@ public class StrangeGridLayoutManager extends RecyclerView.LayoutManager {
         int top = topView.getTop();
         int viewSpan = bottom - top;
         // check if all views are fit into the parent
-        if (viewSpan <= getHeight() - getPaddingTop() - getPaddingBottom()) {
+        if (viewSpan <= getHeight() - getPaddingTop() - getPaddingBottom() - childSize) {
             return 0;
         }
 
