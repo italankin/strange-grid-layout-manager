@@ -10,16 +10,17 @@ import android.view.View;
 import android.widget.Toast;
 
 import java.util.ArrayList;
-import java.util.List;
 import java.util.Locale;
 import java.util.Random;
 
 public class MainActivity extends AppCompatActivity implements ClickListener.OnItemClickListener {
 
+    private static final String KEY_DATASET = "dataset";
+
     private static final int[] COLUMNS = {3, 2};
     private static final int SIZE = 10000;
 
-    private List<Integer> dataset;
+    private ArrayList<Integer> dataset;
     private DataAdapter adapter;
 
     @Override
@@ -35,7 +36,11 @@ public class MainActivity extends AppCompatActivity implements ClickListener.OnI
         layoutManager.setChildMargins(margin, margin);
         list.setLayoutManager(layoutManager);
 
-        dataset = generateDataset(SIZE);
+        if (savedInstanceState != null && savedInstanceState.containsKey(KEY_DATASET)) {
+            dataset = savedInstanceState.getIntegerArrayList(KEY_DATASET);
+        } else {
+            dataset = generateDataset(SIZE);
+        }
         adapter = new DataAdapter(this);
         adapter.setDataset(dataset);
         list.setAdapter(adapter);
@@ -44,9 +49,9 @@ public class MainActivity extends AppCompatActivity implements ClickListener.OnI
         list.addOnItemTouchListener(new ClickListener(this, this));
     }
 
-    private List<Integer> generateDataset(int size) {
+    private ArrayList<Integer> generateDataset(int size) {
         Random random = new Random();
-        List<Integer> list = new ArrayList<>(size);
+        ArrayList<Integer> list = new ArrayList<>(size);
         for (int i = 0; i < size; i++) {
             list.add(0xff000000 | random.nextInt());
         }
@@ -68,6 +73,12 @@ public class MainActivity extends AppCompatActivity implements ClickListener.OnI
                 return true;
         }
         return false;
+    }
+
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putIntegerArrayList(KEY_DATASET, dataset);
     }
 
     @Override
