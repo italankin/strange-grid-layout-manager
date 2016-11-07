@@ -306,7 +306,7 @@ public class StrangeGridLayoutManager extends RecyclerView.LayoutManager {
             anchorPos = getPosition(anchorView);
         }
 
-        int topMargin = getHeight() - getPaddingBottom();
+        int topMargin = getPaddingTop() + getHeight();
         int top = anchorTop; // current top position
         int currentRow = rowsByPos.get(anchorPos);
         int countForRow = childCountForRow(currentRow);
