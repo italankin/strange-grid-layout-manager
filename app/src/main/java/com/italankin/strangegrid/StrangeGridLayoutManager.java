@@ -266,6 +266,9 @@ public class StrangeGridLayoutManager extends RecyclerView.LayoutManager {
         final int startLeft;
         if (anchorView != null) {
             startPos = getPosition(anchorView);
+            if (startPos == 0) {
+                return;
+            }
             startBottom = anchorView.getBottom();
             startLeft = anchorView.getLeft();
         } else {
@@ -487,7 +490,7 @@ public class StrangeGridLayoutManager extends RecyclerView.LayoutManager {
     @Override
     public void scrollToPosition(int position) {
         if (position >= getItemCount()) {
-            return;
+            position = 0;
         }
         removeAllViews();
         anchorViewPosition = position;
@@ -510,33 +513,30 @@ public class StrangeGridLayoutManager extends RecyclerView.LayoutManager {
             return 0;
         }
 
-        View topView = getChildAt(0);
-        View bottomView = getChildAt(getChildCount() - 1);
-
-        int bottom = bottomView.getBottom();
-        int top = topView.getTop();
-        int viewSpan = bottom - top;
+        int viewSpan = childSize * rowsCount + childMarginVertical * (rowsCount - 1);
         // check if all views are fit into the parent
-        if (viewSpan <= getHeight() - getPaddingTop() - getPaddingBottom() - childSize) {
+        if (viewSpan <= getHeight() - getPaddingTop() - getPaddingBottom()) {
             return 0;
         }
 
         int delta = 0;
         if (dy < 0) {
             // scrolling towards begining of list
+            View topView = getChildAt(0);
             int position = getPosition(topView);
             if (position > 0) {
                 delta = dy;
             } else {
-                delta = Math.max(top - getPaddingTop(), dy);
+                delta = Math.max(topView.getTop() - getPaddingTop(), dy);
             }
         } else if (dy > 0) {
             // scrolling towards end of list
+            View bottomView = getChildAt(getChildCount() - 1);
             int position = getPosition(bottomView);
             if (position < getItemCount() - 1) {
                 delta = dy;
             } else {
-                delta = Math.min(bottom - getHeight() + getPaddingBottom(), dy);
+                delta = Math.min(bottomView.getBottom() - getHeight() + getPaddingBottom(), dy);
             }
         }
 
