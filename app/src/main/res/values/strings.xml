@@ -1,4 +1,12 @@
 <resources>
     <string name="app_name">Strange Grid</string>
+
     <string name="refresh">Refresh</string>
+    <string name="go_to">Go to position</string>
+    <string name="change_size">Change size</string>
+    <string name="change_length">Change length</string>
+
+    <string name="hint_go_to_pos">Position</string>
+    <string name="hint_change_length">New length</string>
+    <string name="hint_change_size">Row columns, separated by commas</string>
 </resources>

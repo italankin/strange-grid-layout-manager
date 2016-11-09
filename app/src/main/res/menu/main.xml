@@ -2,6 +2,21 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
       xmlns:app="http://schemas.android.com/apk/res-auto">
     <item
+        android:id="@+id/action_goto"
+        android:icon="@drawable/ic_search"
+        android:title="@string/go_to"
+        app:showAsAction="ifRoom"/>
+    <item
+        android:id="@+id/action_length"
+        android:icon="@drawable/ic_length"
+        android:title="@string/change_length"
+        app:showAsAction="ifRoom"/>
+    <item
+        android:id="@+id/action_size"
+        android:icon="@drawable/ic_size"
+        android:title="@string/change_size"
+        app:showAsAction="ifRoom"/>
+    <item
         android:id="@+id/action_refresh"
         android:icon="@drawable/ic_refresh"
         android:title="@string/refresh"

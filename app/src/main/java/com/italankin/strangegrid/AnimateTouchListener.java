@@ -1,4 +1,4 @@
-package test.strangegrid;
+package com.italankin.strangegrid;
 
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;

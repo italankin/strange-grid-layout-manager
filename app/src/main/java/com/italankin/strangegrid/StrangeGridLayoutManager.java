@@ -1,8 +1,10 @@
-package test.strangegrid;
+package com.italankin.strangegrid;
 
 import android.content.Context;
 import android.graphics.PointF;
 import android.graphics.Rect;
+import android.os.Parcel;
+import android.os.Parcelable;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v7.widget.LinearSmoothScroller;
@@ -28,11 +30,15 @@ public class StrangeGridLayoutManager extends RecyclerView.LayoutManager {
      * Array of column counts for each row. If there are more rows than specified in array,
      * they will be cycled.
      */
-    private int[] columnCounts = {1};
+    private int[] columnCounts = {3};
     /**
      * Maximum number of children in single row
      */
     private int maxCount = columnCounts[0];
+    /**
+     * Total rows count
+     */
+    private int rowsCount = 0;
 
     /**
      * Cache for quick access to row number by adapter position
@@ -55,8 +61,12 @@ public class StrangeGridLayoutManager extends RecyclerView.LayoutManager {
      * Amount of horizontal space available to child views
      */
     private int availableWidth;
+
+    private int anchorViewPosition = 0;
+    private int anchorViewOffset = 0;
     private Rect parentRect = new Rect();
     private Rect tmpRect = new Rect();
+    private int[] tmpOffsets = new int[2];
 
     /**
      * Enables adaptive children sizes
@@ -108,6 +118,7 @@ public class StrangeGridLayoutManager extends RecyclerView.LayoutManager {
         maxCount = max;
         columnCounts = Arrays.copyOf(values, values.length);
         adaptive = false;
+        removeAllViews();
         requestLayout();
     }
 
@@ -139,7 +150,7 @@ public class StrangeGridLayoutManager extends RecyclerView.LayoutManager {
      * @param minSize minumum size of a child
      * @param offsets offsets for column counts, must contain only zeros and positive numbers
      */
-    public void setupForAdaptiveSize(int minSize, @Nullable int[] offsets) {
+    public void setAdaptiveSize(int minSize, @Nullable int[] offsets) {
         if (minSize <= 0) {
             throw new IllegalArgumentException("minSize must be > 0");
         }
@@ -189,20 +200,21 @@ public class StrangeGridLayoutManager extends RecyclerView.LayoutManager {
         childSizeSpec = View.MeasureSpec.makeMeasureSpec(childSize, View.MeasureSpec.EXACTLY);
 
         // create caches to avoid unnecesary computation
-        int row = 0;
-        int count = childCountForRow(row);
+        int rowIndex = 0;
+        int count = childCountForRow(rowIndex);
         int current = 0;
         rowsByPos.clear();
         indexInRow.clear();
-        for (int i = 0, c = getItemCount(); i < c; i++) {
-            rowsByPos.put(i, row);
+        for (int i = 0, lastPos = getItemCount() - 1; i <= lastPos; i++) {
+            rowsByPos.put(i, rowIndex);
             indexInRow.put(i, current);
             current++;
-            if (current == count) {
-                count = childCountForRow(++row);
+            if (current == count && i != lastPos) {
+                count = childCountForRow(++rowIndex);
                 current = 0;
             }
         }
+        rowsCount = rowIndex + 1;
 
         detachAndScrapAttachedViews(recycler);
         fill(recycler);
@@ -226,6 +238,11 @@ public class StrangeGridLayoutManager extends RecyclerView.LayoutManager {
             detachView(viewsCache.valueAt(i));
         }
 
+        if (anchorViewPosition >= getItemCount()) {
+            anchorViewPosition = 0;
+            anchorViewOffset = 0;
+        }
+
         // fill the layout
         fillUp(recycler, anchorView);
         fillDown(recycler, anchorView);
@@ -244,24 +261,31 @@ public class StrangeGridLayoutManager extends RecyclerView.LayoutManager {
      * @param anchorView anchor view
      */
     private void fillUp(RecyclerView.Recycler recycler, View anchorView) {
-        int anchorBottom = 0;
-        int anchorPos = 0;
+        final int startBottom;
+        final int startPos;
+        final int startLeft;
         if (anchorView != null) {
-            anchorBottom = anchorView.getBottom();
-            anchorPos = getPosition(anchorView);
+            startPos = getPosition(anchorView);
+            startBottom = anchorView.getBottom();
+            startLeft = anchorView.getLeft();
+        } else {
+            computeChildOffsets(anchorViewPosition, tmpOffsets);
+            startPos = anchorViewPosition;
+            startLeft = tmpOffsets[0];
+            startBottom = tmpOffsets[1] + childSize + anchorViewOffset;
         }
 
         int bottomMargin = 0;
-        int bottom = anchorBottom; // current bottom position
-        int currentRow = rowsByPos.get(anchorPos);
-        int count = childCountForRow(currentRow);
-        int currentIndex = indexInRow.get(anchorPos); // current view index within its row
-        int leftOffset = getChildLeftOffset(count, currentIndex);
+        int bottom = startBottom; // current bottom position
+        int currentRow = rowsByPos.get(startPos);
+        int currentIndex = indexInRow.get(startPos); // current view index within its row
+        int leftOffset = startLeft;
+        int count;
 
-        int pos = anchorPos;
+        int pos = startPos;
         while (bottom > bottomMargin && pos >= 0) {
-            View view = viewsCache.get(pos);
-            if (view != anchorView) {
+            if (pos != startPos) {
+                View view = viewsCache.get(pos);
                 // view should be added/attached at index 0
                 if (view == null) {
                     view = recycler.getViewForPosition(pos);
@@ -299,22 +323,31 @@ public class StrangeGridLayoutManager extends RecyclerView.LayoutManager {
      * @param anchorView anchor view
      */
     private void fillDown(RecyclerView.Recycler recycler, View anchorView) {
-        int anchorTop = getPaddingTop();
-        int anchorPos = 0;
+        final int startTop;
+        final int startPos;
+        final int startLeft;
         if (anchorView != null) {
-            anchorTop = anchorView.getTop();
-            anchorPos = getPosition(anchorView);
+            startPos = getPosition(anchorView);
+            startLeft = anchorView.getLeft();
+            startTop = anchorView.getTop();
+            anchorViewPosition = startPos;
+            anchorViewOffset = startTop - getPaddingTop();
+        } else {
+            computeChildOffsets(anchorViewPosition, tmpOffsets);
+            startPos = anchorViewPosition;
+            startLeft = tmpOffsets[0];
+            startTop = tmpOffsets[1] + anchorViewOffset;
         }
 
-        int topMargin = getPaddingTop() + getHeight();
-        int top = anchorTop; // current top position
-        int currentRow = rowsByPos.get(anchorPos);
-        int countForRow = childCountForRow(currentRow);
-        int currentIndex = indexInRow.get(anchorPos);
-        int leftOffset = getChildLeftOffset(countForRow, currentIndex);
+        int topMargin = getHeight();
+        int top = startTop; // current top position
+        int currentRow = rowsByPos.get(startPos);
+        int count = childCountForRow(currentRow);
+        int currentIndex = indexInRow.get(startPos);
+        int leftOffset = startLeft;
         int itemCount = getItemCount();
 
-        int pos = anchorPos;
+        int pos = startPos;
         while (top <= topMargin && pos < itemCount) {
             View view = viewsCache.get(pos);
             if (view == null) {
@@ -328,11 +361,11 @@ public class StrangeGridLayoutManager extends RecyclerView.LayoutManager {
             }
             pos++;
             // check if we have reached the end of the row
-            if (++currentIndex == countForRow) {
-                countForRow = childCountForRow(++currentRow);
+            if (++currentIndex == count) {
+                count = childCountForRow(++currentRow);
                 currentIndex = 0;
                 top += childSize + childMarginVertical;
-                leftOffset = getChildLeftOffset(countForRow, currentIndex);
+                leftOffset = getChildLeftOffset(count, currentIndex);
             } else {
                 leftOffset += childSize + childMarginHorizontal;
             }
@@ -402,10 +435,49 @@ public class StrangeGridLayoutManager extends RecyclerView.LayoutManager {
         return columnCounts[row % columnCounts.length];
     }
 
+    /**
+     * Computes child position for child view at {@code position}. The result is written to array of
+     * 2 integers.
+     *
+     * @param pos     child position within adapter
+     * @param offsets array of size 2, in which computed values will be written (left offset at 0 and
+     *                top offset at 1)
+     */
+    private void computeChildOffsets(int pos, @NonNull int[] offsets) {
+        int row = rowsByPos.get(pos);
+        offsets[0] = getChildLeftOffset(childCountForRow(row), indexInRow.get(pos));
+        int availableheight = getHeight() - getPaddingTop() - getPaddingBottom();
+        // virtual height of all child views, including margins between them
+        int childHeight = childSize * rowsCount + childMarginVertical * (rowsCount - 1);
+        // anbchor point - top of the current view at 'pos'
+        // top virtual space of all rows above current
+        int topVirtualSpace = (row == 0) ? 0 : ((childSize + childMarginVertical) * row);
+        if (childHeight < availableheight) {
+            // all views fit available space
+            offsets[1] = getPaddingTop() + topVirtualSpace;
+            return;
+        }
+        // bottom virtual space of all rows below current (including current)
+        int bottomVirtualSpace = (row == rowsCount - 1) ? childSize :
+                (childSize * (rowsCount - row) + childMarginVertical * (rowsCount - row - 1));
+        if (bottomVirtualSpace >= availableheight) {
+            // height of the views below current >= overall views height (including margins)
+            // just align top of the view at 'pos' to top parent margin
+            offsets[1] = getPaddingTop();
+        } else {
+            // otherwise we need to align bottom of the last row with parent bottom margin
+            offsets[1] = Math.max(getPaddingTop(), getHeight() - getPaddingBottom() - bottomVirtualSpace);
+        }
+    }
+
     @Override
     public void onAdapterChanged(RecyclerView.Adapter oldAdapter, RecyclerView.Adapter newAdapter) {
         removeAllViews();
     }
+
+    ///////////////////////////////////////////////////////////////////////////
+    // Scrolling
+    ///////////////////////////////////////////////////////////////////////////
 
     @Override
     public boolean canScrollVertically() {
@@ -417,13 +489,19 @@ public class StrangeGridLayoutManager extends RecyclerView.LayoutManager {
         if (position >= getItemCount()) {
             return;
         }
-        smoothScroller.setTargetPosition(position);
-        startSmoothScroll(smoothScroller);
+        removeAllViews();
+        anchorViewPosition = position;
+        anchorViewOffset = 0;
+        requestLayout();
     }
 
     @Override
     public void smoothScrollToPosition(RecyclerView recyclerView, RecyclerView.State state, int position) {
-        scrollToPosition(position);
+        if (position >= getItemCount()) {
+            return;
+        }
+        smoothScroller.setTargetPosition(position);
+        startSmoothScroll(smoothScroller);
     }
 
     @Override
@@ -471,6 +549,67 @@ public class StrangeGridLayoutManager extends RecyclerView.LayoutManager {
 
         return delta;
     }
+
+    ///////////////////////////////////////////////////////////////////////////
+    // Save/restore state
+    ///////////////////////////////////////////////////////////////////////////
+
+    @Override
+    public Parcelable onSaveInstanceState() {
+        return new SavedState(anchorViewPosition, anchorViewOffset);
+    }
+
+    @Override
+    public void onRestoreInstanceState(Parcelable state) {
+        if (state instanceof SavedState) {
+            SavedState savedState = (SavedState) state;
+            anchorViewPosition = savedState.anchorViewPosition;
+            anchorViewOffset = savedState.anchorViewOffset;
+            requestLayout();
+        }
+    }
+
+    public static class SavedState implements Parcelable {
+        private int anchorViewPosition = 0;
+        private int anchorViewOffset = 0;
+
+        public SavedState(int pos, int offset) {
+            anchorViewPosition = pos;
+            anchorViewOffset = offset;
+        }
+
+        protected SavedState(Parcel in) {
+            anchorViewPosition = in.readInt();
+            anchorViewOffset = in.readInt();
+        }
+
+        public static final Creator<SavedState> CREATOR = new Creator<SavedState>() {
+            @Override
+            public SavedState createFromParcel(Parcel in) {
+                return new SavedState(in);
+            }
+
+            @Override
+            public SavedState[] newArray(int size) {
+                return new SavedState[size];
+            }
+        };
+
+        @Override
+        public void writeToParcel(Parcel dest, int flags) {
+            dest.writeInt(anchorViewPosition);
+            dest.writeInt(anchorViewOffset);
+        }
+
+        @Override
+        public int describeContents() {
+            return 0;
+        }
+    }
+
+    ///////////////////////////////////////////////////////////////////////////
+    // Layout params
+    ///////////////////////////////////////////////////////////////////////////
 
     @Override
     public RecyclerView.LayoutParams generateDefaultLayoutParams() {

@@ -1,4 +1,4 @@
-package test.strangegrid;
+package com.italankin.strangegrid;
 
 import android.content.Context;
 import android.graphics.Color;
