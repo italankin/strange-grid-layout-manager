@@ -56,13 +56,26 @@ public class StrangeGridLayoutManager extends RecyclerView.LayoutManager {
      * Child size (every child is a square)
      */
     private int childSize;
+    /**
+     * {@link android.view.View.MeasureSpec} for {@link #childSize}
+     */
     private int childSizeSpec;
+    /**
+     * Total height of child views with vertical margins
+     */
+    private int childHeightTotal = 0;
     /**
      * Amount of horizontal space available to child views
      */
     private int availableWidth;
 
+    /**
+     * Current anchor view adapter position
+     */
     private int anchorViewPosition = 0;
+    /**
+     * Current anchor view scrolling offset
+     */
     private int anchorViewOffset = 0;
     private Rect parentRect = new Rect();
     private Rect tmpRect = new Rect();
@@ -215,6 +228,7 @@ public class StrangeGridLayoutManager extends RecyclerView.LayoutManager {
             }
         }
         rowsCount = rowIndex + 1;
+        childHeightTotal = childSize * rowsCount + childMarginVertical * (rowsCount - 1);
 
         detachAndScrapAttachedViews(recycler);
         fill(recycler);
@@ -450,12 +464,10 @@ public class StrangeGridLayoutManager extends RecyclerView.LayoutManager {
         int row = rowsByPos.get(pos);
         offsets[0] = getChildLeftOffset(childCountForRow(row), indexInRow.get(pos));
         int availableheight = getHeight() - getPaddingTop() - getPaddingBottom();
-        // virtual height of all child views, including margins between them
-        int childHeight = childSize * rowsCount + childMarginVertical * (rowsCount - 1);
         // anbchor point - top of the current view at 'pos'
         // top virtual space of all rows above current
         int topVirtualSpace = (row == 0) ? 0 : ((childSize + childMarginVertical) * row);
-        if (childHeight < availableheight) {
+        if (childHeightTotal < availableheight) {
             // all views fit available space
             offsets[1] = getPaddingTop() + topVirtualSpace;
             return;
@@ -513,9 +525,8 @@ public class StrangeGridLayoutManager extends RecyclerView.LayoutManager {
             return 0;
         }
 
-        int viewSpan = childSize * rowsCount + childMarginVertical * (rowsCount - 1);
         // check if all views are fit into the parent
-        if (viewSpan <= getHeight() - getPaddingTop() - getPaddingBottom()) {
+        if (childHeightTotal <= getHeight() - getPaddingTop() - getPaddingBottom()) {
             return 0;
         }
 
