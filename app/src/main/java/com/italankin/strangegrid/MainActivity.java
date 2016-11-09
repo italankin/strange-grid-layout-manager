@@ -24,7 +24,7 @@ public class MainActivity extends AppCompatActivity implements ClickListener.OnI
     private static final String KEY_DATASET = "dataset";
     private static final String KEY_COLUMNS = "columns";
 
-    private static final int[] COLUMNS = {3, 2};
+    private static final int[] COLUMNS = {4};
     private static final int SIZE = 10000;
 
     private ArrayList<Integer> dataset;
@@ -150,7 +150,14 @@ public class MainActivity extends AppCompatActivity implements ClickListener.OnI
                 } catch (NumberFormatException e) {
                     size = 0;
                 }
-                dataset = generateDataset(size);
+                if (size == dataset.size()) {
+                    return;
+                }
+                if (size < dataset.size()) {
+                    dataset = new ArrayList<>(dataset.subList(0, size));
+                } else {
+                    dataset.addAll(generateDataset(size - dataset.size()));
+                }
                 adapter.setDataset(dataset);
             }
         });
