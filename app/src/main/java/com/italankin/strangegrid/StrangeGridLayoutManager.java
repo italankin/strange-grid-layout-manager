@@ -244,6 +244,9 @@ public class StrangeGridLayoutManager extends RecyclerView.LayoutManager {
         }
         rowsCount = rowIndex + 1;
         childHeightTotal = childSize * rowsCount + childMarginVertical * (rowsCount - 1);
+        if (childHeightTotal < getHeight() - getPaddingTop() - getPaddingBottom()) {
+            anchorViewOffset = 0;
+        }
 
         detachAndScrapAttachedViews(recycler);
         fill(recycler);
@@ -316,6 +319,8 @@ public class StrangeGridLayoutManager extends RecyclerView.LayoutManager {
 
         int pos = startPos;
         while (bottom > bottomMargin && pos >= 0) {
+            // anchor view processed by fillDown
+            // this method needs it only to calculate next element
             if (pos != startPos) {
                 View view = viewsCache.get(pos);
                 // view should be added/attached at index 0
@@ -488,8 +493,7 @@ public class StrangeGridLayoutManager extends RecyclerView.LayoutManager {
             return;
         }
         // bottom virtual space of all rows below current (including current)
-        int bottomVirtualSpace = (row == rowsCount - 1) ? childSize :
-                (childSize * (rowsCount - row) + childMarginVertical * (rowsCount - row - 1));
+        int bottomVirtualSpace = childHeightTotal - topVirtualSpace;
         if (bottomVirtualSpace >= availableheight) {
             // height of the views below current >= overall views height (including margins)
             // just align top of the view at 'pos' to top parent margin
@@ -631,6 +635,15 @@ public class StrangeGridLayoutManager extends RecyclerView.LayoutManager {
         public int describeContents() {
             return 0;
         }
+    }
+
+    ///////////////////////////////////////////////////////////////////////////
+    // Predictive animations
+    ///////////////////////////////////////////////////////////////////////////
+
+    @Override
+    public boolean supportsPredictiveItemAnimations() {
+        return false;
     }
 
     ///////////////////////////////////////////////////////////////////////////
